@@ -34,6 +34,7 @@ def train(module: str = "BiLSTM", log_dir: str = "./logs", module_save_dir: str 
         os.mkdir(module_save_dir)
 
     print("Network Module:", module)
+    step = 1
     for i in range(epoch):
         print("epoch{0} start".format(i))
         total_train_loss = 0
@@ -61,12 +62,12 @@ def train(module: str = "BiLSTM", log_dir: str = "./logs", module_save_dir: str 
 
         with torch.no_grad():
             for data in test_loader:
-                s1, s2, label = data
+                s1, s2, label, len1, len2 = data
                 if torch.cuda.is_available():
                     s1 = s1.cuda()
                     s2 = s2.cuda()
                     label = label.cuda()
-                output = network(s1, s2)
+                output = network(s1, s2, len1, len2)
                 label = label.reshape((-1, 1))
                 loss = loss_function(output, label)
 
@@ -78,14 +79,14 @@ def train(module: str = "BiLSTM", log_dir: str = "./logs", module_save_dir: str 
         total_train_accuracy = 1.0*total_train_accuracy/train_set_size
         total_test_accuracy = 1.0*total_test_accuracy/test_set_size
 
-        writer.add_scalar('train_loss', total_train_loss, i)
-        writer.add_scalar('train_accuracy', total_train_accuracy, i)
-        writer.add_scalar('test_loss', total_test_loss, i)
-        writer.add_scalar('test_accuracy', total_test_accuracy, i)
-
-        if i % 5 == 0:
+        writer.add_scalar('train_loss', total_train_loss, step)
+        writer.add_scalar('train_accuracy', total_train_accuracy, step)
+        writer.add_scalar('test_loss', total_test_loss, step)
+        writer.add_scalar('test_accuracy', total_test_accuracy, step)
+        if step % 5 == 0:
             torch.save(network.state_dict(), os.path.join(
-                module_save_dir, "epoch{}_lr{}_batchsize{}".format(i, learning_rate, batchsize)))
+                module_save_dir, "epoch{}_lr{}_batchsize{}_accuracy{}.pth".format(step, learning_rate, batchsize, round(total_test_accuracy, 2))))
+        step += 1
 
     writer.close()
 

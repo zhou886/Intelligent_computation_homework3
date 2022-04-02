@@ -10,7 +10,7 @@ class MyDataset(Dataset):
         if train:
             file = open("./data/train.json", 'r', encoding="utf-8")
         else:
-            file = open("./data/test.json", 'r', encoding="utf-8")
+            file = open("./data/dev.json", 'r', encoding="utf-8")
         tmp_list = file.readlines()
         self.size = len(tmp_list)
         self.data = []
@@ -23,14 +23,19 @@ class MyDataset(Dataset):
         return self.size
 
     def __getitem__(self, index: int) -> tuple:
+        """
+        return sentence1, sentence2, label, length of sentence1, length of sentence2
+        """
         s1 = self.data[index]['sentence1']
         s2 = self.data[index]['sentence2']
         output1 = torch.zeros(90, dtype=int)
         output2 = torch.zeros(90, dtype=int)
         for i in range(len(s1)):
-            output1[i] = self.dirctionary[s1[i]]
+            if s1[i] in self.dirctionary:
+                output1[i] = self.dirctionary[s1[i]]
         for i in range(len(s2)):
-            output2[i] = self.dirctionary[s2[i]]
+            if s2[i] in self.dirctionary:
+                output2[i] = self.dirctionary[s2[i]]
         output3 = torch.tensor(int(self.data[index]['label']), dtype=float)
         return output1, output2, output3, len(s1), len(s2)
 
