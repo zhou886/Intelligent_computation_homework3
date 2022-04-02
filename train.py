@@ -1,54 +1,58 @@
 import torch
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-from network import NetworkModuleBiLSTM
+from network import NetworkModuleBiLSTM, NetworkModuleTransformer, NetworkModuleBERT
 from dataset import MyDataset
+import os
 
 
-def train():
-    epoch = 300
-    learning_rate = 0.001
-
+def train(module: str = "BiLSTM", log_dir: str = "./logs", module_save_dir: str = "./modules", epoch: int = 100, learning_rate: float = 0.001, batchsize: int = 8):
     train_set = MyDataset(True)
     test_set = MyDataset(False)
     train_set_size = len(train_set)
     test_set_size = len(test_set)
 
-    train_loader = DataLoader(train_set, batch_size=8,
+    train_loader = DataLoader(train_set, batch_size=batchsize,
                               shuffle=True)
-    test_loader = DataLoader(test_set, batch_size=8,
+    test_loader = DataLoader(test_set, batch_size=batchsize,
                              shuffle=True)
 
-    network = NetworkModuleBiLSTM()
+    if module == "BiLSTM":
+        network = NetworkModuleBiLSTM()
+    elif module == "Transformer":
+        network = NetworkModuleTransformer()
+    elif module == "BERT":
+        network == NetworkModuleBERT()
     loss_function = torch.nn.MSELoss()
     optimizer = torch.optim.SGD(network.parameters(), lr=learning_rate)
-
     if torch.cuda.is_available():
         network = network.cuda()
         loss_function = loss_function.cuda()
 
-    writer = SummaryWriter("logs")
+    writer = SummaryWriter(log_dir)
+    if not os.path.exists(module_save_dir):
+        os.mkdir(module_save_dir)
 
+    print("Network Module:", module)
     for i in range(epoch):
-        print("epoch{0} starts.".format(i))
+        print("epoch{0} start".format(i))
         total_train_loss = 0
         total_train_accuracy = 0
         total_test_loss = 0
         total_test_accuracy = 0
 
         for data in train_loader:
-            s1, s2, label = data
+            s1, s2, label, len1, len2 = data
             if torch.cuda.is_available():
                 s1 = s1.cuda()
                 s2 = s2.cuda()
                 label = label.cuda()
-            output = network(s1, s2)
+            output = network(s1, s2, len1, len2)
             label = label.reshape((-1, 1))
             loss = loss_function(output.float(), label.float())
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            print(output, label)
 
             total_train_loss += loss.item()
             for i in range(len(label)):
@@ -79,6 +83,16 @@ def train():
         writer.add_scalar('test_loss', total_test_loss, i)
         writer.add_scalar('test_accuracy', total_test_accuracy, i)
 
+        if i % 5 == 0:
+            torch.save(network.state_dict(), os.path.join(
+                module_save_dir, "epoch{}_lr{}_batchsize{}".format(i, learning_rate, batchsize)))
+
+    writer.close()
+
 
 if __name__ == '__main__':
-    train()
+    for i in range(5):
+        train("BiLSTM", "./BiLSTM_logs_{0}".format(i),
+              "./BiLSTM_Modules_{0}".format(i))
+        train("Transformer",
+              "./Transformer_logs_{0}".format(i), "./Transformer_Modules_{0}".format(i))

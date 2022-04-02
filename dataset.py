@@ -2,12 +2,13 @@ from torch.utils.data import Dataset
 import json
 import torch
 
+
 class MyDataset(Dataset):
-    def __init__(self, train:bool = True) -> None:
+    def __init__(self, train: bool = True) -> None:
         super().__init__()
         self.train = train
         if train:
-            file = open("./data/train.json",'r', encoding="utf-8")
+            file = open("./data/train.json", 'r', encoding="utf-8")
         else:
             file = open("./data/test.json", 'r', encoding="utf-8")
         tmp_list = file.readlines()
@@ -15,35 +16,59 @@ class MyDataset(Dataset):
         self.data = []
         for iter in tmp_list:
             self.data.append(json.loads(iter))
-        with open('./word_to_id.txt', 'r') as f:
+        with open('./word_to_id.json', 'r') as f:
             self.dirctionary = json.loads(f.read())
-    
+
     def __len__(self) -> int:
         return self.size
-    
-    def __getitem__(self, index:int) -> tuple:
-        output1 = torch.zeros(120, dtype=int)
-        output2 = torch.zeros(120, dtype=int)
-        for i in range(len(self.data[index]['sentence1'])):
-            output1[i] = self.dirctionary[self.data[index]['sentence1'][i]]
-        for i in range(len(self.data[index]['sentence2'])):
-            output2[i] = self.dirctionary[self.data[index]['sentence2'][i]]
+
+    def __getitem__(self, index: int) -> tuple:
+        s1 = self.data[index]['sentence1']
+        s2 = self.data[index]['sentence2']
+        output1 = torch.zeros(90, dtype=int)
+        output2 = torch.zeros(90, dtype=int)
+        for i in range(len(s1)):
+            output1[i] = self.dirctionary[s1[i]]
+        for i in range(len(s2)):
+            output2[i] = self.dirctionary[s2[i]]
         output3 = torch.tensor(int(self.data[index]['label']), dtype=float)
-        return output1, output2, output3
+        return output1, output2, output3, len(s1), len(s2)
 
     def showData(self) -> None:
         for i in range(self.size):
-            o1, o2, o3 = self[i]
-            print(o1, o2, o3)
-    
-    def showMaxLength(self) -> None:
-        maxLen = 0
-        for i in range(self.size):
-            s1 = self[i][0]
-            s2 = self[i][1]
-            maxLen = max(len(s1), len(s2), maxLen)
-        print("Max sequence length is", maxLen)
+            print(self.data[i]['sentence1'], self.data[i]
+                  ['sentence2'], self.data[i]['label'])
 
-if __name__=="__main__":
+    def countSentenceLength(self) -> None:
+        length = {}
+        for i in range(self.size):
+            s1 = self.data[i]['sentence1']
+            s2 = self.data[i]['sentence2']
+            if len(s1) > 90 or len(s2) > 90:
+                print("too long", i)
+            if len(s1) not in length:
+                length[len(s1)] = 1
+            else:
+                length[len(s1)] += 1
+            if len(s2) not in length:
+                length[len(s2)] = 1
+            else:
+                length[len(s2)] += 1
+        for key in length:
+            print(key, length[key])
+
+    def makeDictionary(self) -> None:
+        dictionary = {}
+        for i in range(self.size):
+            s1 = self.data[i]['sentence1']
+            s2 = self.data[i]['sentence2']
+            for ch in s1+s2:
+                if ch not in dictionary:
+                    dictionary[ch] = len(dictionary)+1
+        with open('./word_to_id.json', 'w') as f:
+            json.dump(dictionary, f)
+
+
+if __name__ == "__main__":
     dataset = MyDataset()
-    dataset.showData()
+    dataset.makeDictionary()
