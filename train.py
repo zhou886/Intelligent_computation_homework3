@@ -6,7 +6,7 @@ from dataset import MyDataset
 import os
 
 
-def train(module: str = "BiLSTM", log_dir: str = "./logs", module_save_dir: str = "./modules", epoch: int = 100, learning_rate: float = 0.001, batchsize: int = 8):
+def train(module: str = "BiLSTM", log_dir: str = "./logs", module_save_dir: str = "./modules", epoch: int = 100, learning_rate: float = 0.001, batchsize: int = 16):
     train_set = MyDataset(True)
     test_set = MyDataset(False)
     train_set_size = len(train_set)
